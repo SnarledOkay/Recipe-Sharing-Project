@@ -6,6 +6,7 @@ const sendEmail = require('./email/sendEmail')
 const sendPasswordResetEmail = require('./email/sendPasswordResetEmail')
 const sendVerifyAccountEmail = require('./email/sendVerifyAccountEmail')
 const createHash = require('./createHash')
+const comparePassword = require('./comparePassword')
 
 module.exports = {
     checkPermission, checkOwnerPermission,
@@ -14,5 +15,6 @@ module.exports = {
     sendEmail,
     sendPasswordResetEmail,
     sendVerifyAccountEmail,
-    createHash
+    createHash,
+    comparePassword
 }

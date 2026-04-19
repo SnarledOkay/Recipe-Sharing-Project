@@ -29,7 +29,7 @@ const createReview = async (req,res) => {
     const {
         query:{recipeId},
         body:{title,rating,description}
-    }
+    } = req
     if(!title || !rating || !description){
         throw new CustomError.BadRequestError('Please provide all necessary information')
     }

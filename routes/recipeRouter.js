@@ -8,7 +8,11 @@ const {
     createRecipe,
     updateRecipe,
     deleteRecipe,
-    uploadImage
+    uploadImage,
+    getSubstituteIngredients,
+    addSubstituteIngredients,
+    updateSubstituteIngredients,
+    deleteSubstituteIngredients
 } = require('../controllers/recipeController')
 
 router.route('/')
@@ -19,6 +23,11 @@ router.route('/:id')
     .get(getSingleRecipe)
     .patch(updateRecipe)
     .delete(deleteRecipe)
-
+router.route('/:recipeId/:ingredientId')
+    .get(getSubstituteIngredients)
+    .post(addSubstituteIngredients)
+router.route('/:recipeId/:ingredientId/:subIngredientId')
+    .patch(updateSubstituteIngredients)
+    .delete(deleteSubstituteIngredients)
 
 module.exports = router

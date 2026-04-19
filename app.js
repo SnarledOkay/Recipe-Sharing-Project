@@ -6,6 +6,7 @@ const express = require('express');
 const app = express();
 const cookieParser = require('cookie-parser')
 const cloudinary = require('cloudinary').v2;
+const morgan = require('morgan')
 
 //2 - connectDB
 const connectDB = require('./db/connect')
@@ -19,14 +20,15 @@ const reviewRouter = require('./routes/reviewRouter')
 const errorHandlerMiddleware = require('./middleware/error-handler')
 const notFoundMiddleware = require('./middleware/not-found')
 
-//5 - Set up routes
+//5 - Set up middleware
+app.use(express.json())
+app.use(cookieParser(process.env.JWT_SECRET))
+app.use(morgan('tiny'))
+
+//6 - Set up routes
 app.use('/api/v1/auth',authRouter)
 app.use('/api/v1/recipe', recipeRouter)
 app.use('/api/v1/review', reviewRouter)
-
-//6 - Set up middleware
-app.use(express.json())
-app.use(cookieParser(process.env.JWT_SECRET))
 
 //7 - error handler middleware (must be last)
 //if any route matches, user has already been directed

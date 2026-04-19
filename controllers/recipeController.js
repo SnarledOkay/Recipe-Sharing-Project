@@ -32,7 +32,7 @@ const getAllRecipes = async (req,res) => {
             }
             //find by ingredient, limit set
             else{
-                const totalAmount;
+                let totalAmount;
                 if(unit === 'kg' || unit === 'l') totalAmount = ingredient.amount*1000;
                 else totalAmount = ingredient.amount ;
                 const ingredients = Ingredient.find({ingredient:ingredient.ingredient,totalAmount:{$lte:totalAmount}})
@@ -151,11 +151,124 @@ const uploadImage = async (req,res) => {
     res.status(StatusCodes.OK).send('Image uploaded successfully!')
 }
 
+//CRUD substitute ingredients 
+const getSubstituteIngredients = async (req,res) => {
+    const {recipeId,ingredientId} = req.query
+    const recipe = await Recipe.findById(recipeId)
+    if(!recipe){
+        throw new CustomError.NotFoundError('Recipe cannot be found')
+    }
+    const ingredient = await Ingredient.findById(ingredientId)
+    if(!ingredient){
+        throw new CustomError.NotFoundError('Ingredient cannot be found')
+    }
+    const substituteIngredients = await Ingredient.find({subsituteFor:ingredientId,recipe:recipeId}).select('ingredient amount')
+    if(!substituteIngredients){
+        throw new CustomError.NotFoundError('There is no substitute for this ingredient')
+    }
+    const numOfSubIngredients = await Ingredient.countDocuments({subsituteFor:ingredientId,recipe:recipeId})
+    res.status(StatusCodes.OK).json({
+        substituteIngredients,
+        numOfSubIngredients
+    })
+}
+
+const addSubstituteIngredients = async (req,res) => {
+    const{
+        query:{recipeId,ingredientId},
+        body:{ingredient,amount,unit}
+    } = req
+    //check for presence of information
+    if(!ingredient || !amount || !unit){
+        throw new CustomError.NotFoundError('Substitute ingredient or its amount and/or unit is missing')
+    }
+    //check if both targets exist
+    const recipe = await Recipe.findById(recipeId)
+    if(!recipe){
+        throw new CustomError.NotFoundError('Recipe cannot be found')
+    }
+    const updatedIngredient = await Ingredient.findById(ingredientId)
+    if(!updatedIngredient){
+        throw new CustomError.NotFoundError('Ingredient cannot be found')
+    }
+    //check if substitute ingredient has been created before
+    const isIngredientTaken = await Ingredient.find({substituteFor:ingredientId,ingredient:ingredient})
+    if(isIngredientTaken){
+        throw new CustomError.DuplicatedEntityError('Substitute ingredient has already been created')
+    }
+    //create substitute ingredient
+    const subIngredient = await Ingredient.create({
+        ingredient,
+        amount,
+        unit,
+        recipe:recipeId,
+        substituteFor:ingredientId
+    })
+    res.status(StatusCodes.CREATED).json({
+        subIngredient:{
+            ingredient:subIngredient.ingredient,
+            amount: subIngredient.amount,
+            unit: subIngredient.unit
+        },
+        msg:'Substitute ingredient added successfully!'
+    })
+}
+
+const updateSubstituteIngredients = async (req,res) => {
+    const {
+        query: {recipeId,ingredientId,subIngredientId},
+        body: {ingredient,amount,unit}
+    } = req
+    if(!ingredient || !amount || !unit){
+        throw new CustomError.BadRequestError('Substitute or its amount and/or unit is missing')
+    }
+    const recipe = await Recipe.findById(recipeId)
+    const updatedIngredient = await Ingredient.findById(ingredientId)
+    const subIngredient = await Ingredient.findById(subIngredientId)
+    if(!recipe) throw new CustomError.NotFoundError('Recipe cannot be found');
+    if(!updatedIngredient) throw new CustomError.NotFoundError('Ingredient cannot be found');
+    if(!subIngredient) throw new CustomError.NotFoundError('Substitute ingredient cannot be found');
+    //update new information
+    const isIngredientTaken = await Ingredient.find({substituteFor:ingredientId,ingredient:ingredient})
+    if(isIngredientTaken) throw new CustomError.DuplicatedEntityError('Substitute ingredient has already been created');
+    //update new information
+    subIngredient.ingredient = ingredient;
+    subIngredient.amount = amount;
+    subIngredient.unit = unit;
+    await subIngredient.save();
+    res.status(StatusCodes.OK).json({
+        subIngredient:{
+            subIngredient: ingredient,
+            subIngredient: amount,
+            subIngredient: unit,
+        },
+        msg:'Substitute ingredient has been updated!'
+    })
+}
+
+const deleteSubstituteIngredients = async (req,res) => {
+    const {recipeId,ingredientId,subIngredientId} = req.query
+    const recipe = await Recipe.findById(recipeId)
+    const ingredient = await Ingredient.findById(ingredientId)
+    if(!recipe) throw new CustomError.NotFoundError('Recipe cannot be found');
+    if(!ingredient) throw new CustomError.NotFoundError('Ingredient cannot be found');
+    UtilityFunction.checkOwnerPermission(req.user,recipe.user)
+    const subIngredient = await Ingredient.findOneAndDelete({_id:subIngredientId})
+    if(!subIngredient){
+        throw new CustomError.NotFoundError('Cannot find substitute ingredient to delete')
+    }
+    res.status(StatusCodes.OK).json({msg:'Substitute ingredient deleted successfully!'})
+}
+
 module.exports = {
     getAllRecipes,
     getSingleRecipe,
     createRecipe,
     updateRecipe,
     deleteRecipe,
-    uploadImage
+    uploadImage,
+    getSubstituteIngredients,
+    addSubstituteIngredients,
+    updateSubstituteIngredients,
+    deleteSubstituteIngredients
 }

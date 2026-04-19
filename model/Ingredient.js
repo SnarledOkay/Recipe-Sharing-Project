@@ -23,6 +23,10 @@ const IngredientSchema = new mongoose.Schema({
         type:mongoose.Types.ObjectId,
         ref:'Recipe',
         required:true
+    },
+    subsituteFor:{
+        type:mongoose.Types.ObjectId,
+        ref:'Ingredient',
     }
 })
 
@@ -32,6 +36,7 @@ IngredientSchema.pre('save',async function(next){
     }
     if(this.unit === 'kg' || this.unit === 'l') this.totalAmount = this.amount * 1000;
     else this.totalAmount = this.amount;
+    //prolly no need to check if substitute conflicts
     next()
 })
 

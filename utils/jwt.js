@@ -3,11 +3,13 @@ const UtilityFunction = require('../utils')
 
 const createJWT = ({payload}) => {
     //currently no need for JWT_LIFETIME
-    const token = jwt.sign(payload,process.env.JWT_SECRET)
-    return token
+    return jwt.sign(payload,process.env.JWT_SECRET)
 }
 
-const isTokenValid = ({token}) => jwt.verify(token,process.env.JWT_SECRET)
+const isTokenValid = (token) => {
+    // console.log('secret: ',process.env.JWT_SECRET);
+    return jwt.verify(token,process.env.JWT_SECRET);
+}
 
 const attachCookiesToResponse = ({res,user,refreshToken}) => {
     //refreshToken are already hashed before
@@ -16,10 +18,11 @@ const attachCookiesToResponse = ({res,user,refreshToken}) => {
     const refreshTokenJWT = createJWT({payload:{user,refreshToken}})
 
     const oneMonth = 1000*60*60*24*30;
-    const thirtyMinutes = 1000*60*30;
+    // const thirtyMinutes = 1000*60*30;
+    const oneHour = 1000*60*60;
     res.cookie('accessToken',accessTokenJWT,{
         httpOnly:true,
-        maxAge:thirtyMinutes,
+        maxAge:oneHour,
         secure:process.env.NODE_ENV === 'production',
         signed:true,
     })

@@ -1,25 +1,43 @@
 
 const CustomError = require('../errors')
+const Token = require('../model/Token')
+const jwt = require('jsonwebtoken')
 
-const {isTokenValid} = require('../utils/jwt')
+const UtilityFunction = require('../utils')
 
 const authenticateUser = async (req,res,next) => {
-    let token = req.signedCookies.token
-    // if(!token){
-    //     const authHeader = req.headers.authorization
-    //     if(authHeader && authHeader.startsWith('Bearer ')){
-    //         token = authHeader.split(' ')[1]
-    //     }
-    // }
-    if(!token){
-        throw new CustomError.UnauthenticatedError('Unauthorized to access this route')
-    }
+    const {accessToken,refreshToken} = req.signedCookies
     try{
-        const {userId,name,role} = isTokenValid(token)
-        req.user = {userId,name,role}
+        //If access token is valid
+        if(accessToken){
+            console.log(accessToken)
+            console.log('1 - Start decoding access token');
+            const payload = UtilityFunction.isTokenValid(accessToken);
+            console.log('2 - Finish decoding access token');
+            console.log(payload)
+            req.user = payload
+            return next()
+        };
+        //If refresh token is still valid, create new access token
+        const payload = isTokenValid(refreshToken);
+        const existingToken = await Token.findOne({
+            user:payload.userId,
+            refreshToken:payload.refreshToken,
+        })
+        if(!existingToken || !existingToken?.isValid){
+            throw new CustomError.UnauthenticatedError('Authentication failed')
+        }
+        //attach new cookies again to response
+        UtilityFunction.attachCookiesToResponse({
+            res,
+            user:payload.user,
+            refreshToken
+        });
+        req.user = payload.user; //'isTokenValid' returns an object of form 'user:{userId,name,role}'
         next()
     }catch(error){
-        throw new CustomError.UnauthenticatedError('Invalid token provided')
+        console.log(error)
+        throw new CustomError.UnauthenticatedError('Invalid credentials!')
     }
 }
 

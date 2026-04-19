@@ -22,34 +22,41 @@ const registerUser = async (req,res) => {
     const role = isFirstUser ? 'admin' : 'user' ;
     
     //This is just a random string, not hashed
-    const verificationToken = crypto.randomBytes(70).toString('hex');
-    const user = await User.create({name,email,password,role})
-
-    const origin = 'http://localhost:3000'
-    await UtilityFunction.sendVerifyAccountEmail({
-        name:user.name,
-        email:user.email,
-        verificationToken,
-        origin
+    // const verificationToken = crypto.randomBytes(70).toString('hex');
+    const user = await User.create({name,email,password,role,
+        isVerified:true,
+        verifiedAt: new Date(Date.now())
     })
-    user.verificationToken = UtilityFunction.createHash(verificationToken)
-    res.status(StatusCodes.CREATED).json({msg:'Please check your email to verify account'})
+    // user.isVerified = true ;
+    // user.verifiedAt = new Date(Date.now())
+    // await user.save() //needs to save these changes
+
+    // const origin = 'http://localhost:3000'
+    // await UtilityFunction.sendVerifyAccountEmail({
+    //     name:user.name,
+    //     email:user.email,
+    //     verificationToken,
+    //     origin
+    // })
+    // user.verificationToken = UtilityFunction.createHash(verificationToken)
+    // res.status(StatusCodes.CREATED).json({msg:'Please check your email to verify account'})
+    res.status(StatusCodes.CREATED).json({msg:'Account created!'})
 }
 
-const verifyEmail = async (req,res) => {
-    const {email,token} = req.query
-    const user = await User.findOne({email:email})
-    if(user){
-        if(user.verificationToken === UtilityFunction.createHash(token)){
-            user.isVerified = true ;
-            user.verificationToken = ''
-            user.verifiedAt = new Date(Date.now())
-        }else{
-            throw new CustomError.UnauthenticatedError('Email verification failed!')
-        }
-    }
-    res.status(StatusCodes.OK).json({msg:'Email verified successfully'})
-}
+// const verifyEmail = async (req,res) => {
+//     const {email,token} = req.query
+//     const user = await User.findOne({email:email})
+//     if(user){
+//         if(user.verificationToken === UtilityFunction.createHash(token)){
+//             user.isVerified = true ;
+//             user.verificationToken = ''
+//             user.verifiedAt = new Date(Date.now())
+//         }else{
+//             throw new CustomError.UnauthenticatedError('Email verification failed!')
+//         }
+//     }
+//     res.status(StatusCodes.OK).json({msg:'Email verified successfully'})
+// }
 
 const login = async (req,res) => {
     const {email,password} = req.body
@@ -60,7 +67,7 @@ const login = async (req,res) => {
     if(!user){
         throw new CustomError.BadRequestError('Invalid credentials')
     }
-    const isPasswordMatch = await User.comparePassword(password);
+    const isPasswordMatch = await UtilityFunction.comparePassword(password,user.password)
     if(!isPasswordMatch){
         throw new CustomError.BadRequestError('Invalid credentials')
     }
@@ -68,28 +75,37 @@ const login = async (req,res) => {
         throw new CustomError.UnauthenticatedError('Account is not yet verified')
     }
 
-    const refreshToken = ''
-    const tokenUser = UtilityFunction.createTokenUser(user)
+    const tokenUser = await UtilityFunction.createTokenUser(user)
     const existingToken = await Token.findOne({user:user._id})
     if(existingToken){
-        const {isValid} = existingToken ;
+        const {isValid,refreshToken} = existingToken ;
         if(!isValid){
             throw new CustomError.UnauthenticatedError('Invalid credentials')
         }
-        refreshToken = existingToken.refreshToken
-        UtilityFunction.attachCookiesToResponse({res,tokenUser,refreshToken})
-        res.status(StatusCodes.OK).json({user:tokenUser})
+        UtilityFunction.attachCookiesToResponse({res,user:tokenUser,refreshToken})
+        res.status(StatusCodes.OK).json({
+            tokenUser,
+            status:'Refresh token found',
+        })
         return
     }
-    refreshToken = crypto.randomBytes(40).toString('hex')
+    const refreshToken = crypto.randomBytes(40).toString('hex')
     const userAgent = req.headers['user-agent']
     const ip = req.ip
     await Token.create({refreshToken,ip,userAgent,user:user._id})
-    UtilityFunction.attachCookiesToResponse({res,tokenUser,refreshToken})
-    res.status(StatusCodes.OK).json({msg:`Welcome, user ${user.name}`})
+    UtilityFunction.attachCookiesToResponse({
+        res,
+        user:tokenUser,
+        refreshToken
+    })
+    res.status(StatusCodes.OK).json({
+        tokenUser,
+        status:'New refresh token created'
+    })
 }
 
 const logout = async (req,res) => {
+    console.log(req.user)
     await Token.findOneAndDelete({user:req.user.userId})
     res.cookie('accessToken','logout',{
         httpOnly:true,
@@ -146,7 +162,7 @@ const resetPassword = async (req,res) => {
 
 module.exports = {
     registerUser,
-    verifyEmail,
+    // verifyEmail,
     login,
     logout,
     forgotPassword,

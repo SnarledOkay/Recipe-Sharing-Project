@@ -27,6 +27,12 @@ const IngredientSchema = new mongoose.Schema({
     subsituteFor:{
         type:mongoose.Types.ObjectId,
         ref:'Ingredient',
+    },
+    //allows to undo changes
+    status:{
+        type:String,
+        enums:['created','updated','deleted'],
+        default:'created'
     }
 })
 
@@ -37,7 +43,10 @@ IngredientSchema.pre('save',async function(next){
     if(this.unit === 'kg' || this.unit === 'l') this.totalAmount = this.amount * 1000;
     else this.totalAmount = this.amount;
     //prolly no need to check if substitute conflicts
-    next()
+})
+
+IngredientSchema.pre('remove',async function(next){
+    await this.constructor.deleteMany({substituteFor:this._id})
 })
 
 module.exports = mongoose.model('Ingredient',IngredientSchema)

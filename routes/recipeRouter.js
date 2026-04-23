@@ -6,7 +6,7 @@ const {
     getAllRecipes,
     getSingleRecipe,
     createRecipe,
-    updateRecipe,
+    updateRecipe, updateIngredientList,
     deleteRecipe,
     uploadImage,
     getSubstituteIngredients,
@@ -15,19 +15,22 @@ const {
     deleteSubstituteIngredients
 } = require('../controllers/recipeController')
 
+const {authenticateUser} = require('../middleware/authentication')
+
 router.route('/')
     .get(getAllRecipes)
-    .post(createRecipe)
-router.route('/:id/upload-image').post(uploadImage)
+    .post(authenticateUser,createRecipe)
+router.route('/:recipeId/upload-image').post(authenticateUser,uploadImage)
+router.route('/:recipeId/ingredient-list').patch(authenticateUser,updateIngredientList)
 router.route('/:id')
     .get(getSingleRecipe)
-    .patch(updateRecipe)
-    .delete(deleteRecipe)
+    .patch(authenticateUser,updateRecipe)
+    .delete(authenticateUser,deleteRecipe)
 router.route('/:recipeId/:ingredientId')
     .get(getSubstituteIngredients)
-    .post(addSubstituteIngredients)
+    .post(authenticateUser,addSubstituteIngredients)
 router.route('/:recipeId/:ingredientId/:subIngredientId')
-    .patch(updateSubstituteIngredients)
-    .delete(deleteSubstituteIngredients)
+    .patch(authenticateUser,updateSubstituteIngredients)
+    .delete(authenticateUser,deleteSubstituteIngredients)
 
 module.exports = router

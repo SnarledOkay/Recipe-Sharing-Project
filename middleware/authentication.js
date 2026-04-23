@@ -10,22 +10,22 @@ const authenticateUser = async (req,res,next) => {
     try{
         //If access token is valid
         if(accessToken){
-            console.log(accessToken)
-            console.log('1 - Start decoding access token');
             const payload = UtilityFunction.isTokenValid(accessToken);
-            console.log('2 - Finish decoding access token');
-            console.log(payload)
-            req.user = payload
+            req.user = payload.user
             return next()
         };
-        //If refresh token is still valid, create new access token
-        const payload = isTokenValid(refreshToken);
+        //Decode 'refreshToken' cookie to extract refreshToken
+        const payload = UtilityFunction.isTokenValid(refreshToken);
+        //find refresh token
         const existingToken = await Token.findOne({
-            user:payload.userId,
+            user:payload.user.userId,
             refreshToken:payload.refreshToken,
         })
+        console.log(payload.refreshToken);
+        console.log(existingToken);
+        //Check if token is still valid
         if(!existingToken || !existingToken?.isValid){
-            throw new CustomError.UnauthenticatedError('Authentication failed')
+            throw new CustomError.UnauthenticatedError('Authentication failed!')
         }
         //attach new cookies again to response
         UtilityFunction.attachCookiesToResponse({

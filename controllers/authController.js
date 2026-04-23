@@ -160,11 +160,16 @@ const resetPassword = async (req,res) => {
     res.status(StatusCodes.OK).json({msg:'Password changed successfully!'})
 }
 
+const refreshToken = async (req,res) => {
+    res.status(StatusCodes.OK).json({msg:'Access Token refreshed!'})
+}
+
 module.exports = {
     registerUser,
     // verifyEmail,
     login,
     logout,
     forgotPassword,
-    resetPassword
+    resetPassword,
+    refreshToken
 }

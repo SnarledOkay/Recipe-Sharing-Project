@@ -24,7 +24,7 @@ const IngredientSchema = new mongoose.Schema({
         ref:'Recipe',
         required:true
     },
-    subsituteFor:{
+    substituteFor:{
         type:mongoose.Types.ObjectId,
         ref:'Ingredient',
     },

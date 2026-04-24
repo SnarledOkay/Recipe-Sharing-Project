@@ -3,20 +3,19 @@ const express = require('express')
 const router = express.Router()
 
 const {
-    getAllRecipes,
+    getAllRecipes,searchByIngredientList,
     getSingleRecipe,
     createRecipe,
     updateRecipe, updateIngredientList,
     deleteRecipe,
     uploadImage,
     getSubstituteIngredients,
-    addSubstituteIngredients,
-    updateSubstituteIngredients,
-    deleteSubstituteIngredients
+    updateSubstituteIngredientList
 } = require('../controllers/recipeController')
 
 const {authenticateUser} = require('../middleware/authentication')
 
+router.route('/advanced-search').post(searchByIngredientList);
 router.route('/')
     .get(getAllRecipes)
     .post(authenticateUser,createRecipe)
@@ -28,9 +27,6 @@ router.route('/:id')
     .delete(authenticateUser,deleteRecipe)
 router.route('/:recipeId/:ingredientId')
     .get(getSubstituteIngredients)
-    .post(authenticateUser,addSubstituteIngredients)
-router.route('/:recipeId/:ingredientId/:subIngredientId')
-    .patch(authenticateUser,updateSubstituteIngredients)
-    .delete(authenticateUser,deleteSubstituteIngredients)
+    .post(updateSubstituteIngredientList)
 
 module.exports = router

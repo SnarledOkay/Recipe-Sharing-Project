@@ -21,8 +21,6 @@ const authenticateUser = async (req,res,next) => {
             user:payload.user.userId,
             refreshToken:payload.refreshToken,
         })
-        console.log(payload.refreshToken);
-        console.log(existingToken);
         //Check if token is still valid
         if(!existingToken || !existingToken?.isValid){
             throw new CustomError.UnauthenticatedError('Authentication failed!')

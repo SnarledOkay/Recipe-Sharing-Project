@@ -7,65 +7,87 @@ const Recipe = require('../model/Recipe')
 const Review = require("../model/Review")
 const Ingredient = require('../model/Ingredient')
 
+//Tested and fixed
 const getAllRecipes = async (req,res) => {
-    //only searches by ingredient list 
-    const {search,ingredientList} = req.query
-    let foundRecipes = new Set();
-    if(!search && !ingredientList){
-        foundRecipes = await Recipe.find({});
-    }else{
-        if(search){
-            //find recipes based on title, description or instruction
-            foundRecipes = Recipe.find({
-                $or:[
-                    {title:{$regex:search,$options:'i'}},
-                    {description:{$regex:search,$options:'i'}},
-                    {instruction:{$regex:search,$options:'i'}}
-                ]
-            });
-        }else{
-            //find recipes based on ingredient list 
-            JSON.parse(ingredientList);
-            ingredientList.forEach(ingredient => {
-                //find by ingredient, no limit set
-                if(!ingredient.amount || !ingredient.unit){
-                    //find all ingredients
-                    const ingredients = Ingredient.find({ingredient:ingredient.ingredient})
-                    ingredients.map(index => {foundRecipes.add(index.recipe)})
-                }
-                //find by ingredient, limit set
-                else{
-                    let totalAmount;
-                    if(unit === 'kg' || unit === 'l') totalAmount = ingredient.amount*1000;
-                    else totalAmount = ingredient.amount ;
-                    const ingredients = Ingredient.find({ingredient:ingredient.ingredient,totalAmount:{$lte:totalAmount}})
-                    ingredients.map(index => {foundRecipes.add(index.recipe)})
-                }
-            });
-            //convert Set of recipeId into Set of recipes
-            for(var i = 0; i < foundRecipes.length;i++){
-                foundRecipes[i] = Recipe.findById(foundRecipes[i])
-            }
-        }
+    //switch to getting information from 'req.body'
+    const {search} = req.query
+    let allRecipesIds = [];
+    let foundRecipes;
+    if(!search) foundRecipes = Recipe.find({});
+    else{
+        const matchedRecipes = await Recipe.find({
+            $or:[
+                {title:{$regex:search,$options:'i'}},
+                {description:{$regex:search,$options:'i'}},
+                {instruction:{$regex:search,$options:'i'}}
+            ]
+        },'_id') //only extract '_id' instead of the whole Recipe
+        const matchedIngredients = await Ingredient.find({ingredient:{$regex:search,$options:'i'}})
+        matchedRecipes.map(r => allRecipesIds.push(r))
+        matchedIngredients.map(ingre => allRecipesIds.push(ingre.recipe.toString()))//convert ObjectId to String
+        //Find all recipes provided in the array
+        foundRecipes = Recipe.find({_id:{$in:allRecipesIds}})
     }
-    
     //Sort according to user's choice
-    const sort = req.query
-    if(sort === 'a-z') foundRecipes.sort();
-    if(sort === 'z-a') foundRecipes.sort();
-    if(sort === 'Oldest to Latest') foundRecipes.sort('createdAt');
-    if(sort === 'Latest to Oldest') foundRecipes.sort('-createdAt');
-    if(sort === 'Lowest to Highest Rated') foundRecipes.sort('averageRating');
-    if(sort === 'Highest to Lowest Rated') foundRecipes.sort('-averageRating');
+    const sort = req.query.sort
+    if(sort === 'a-z') foundRecipes.sort({title:1});
+    if(sort === 'z-a') foundRecipes.sort({title:-1});
+    if(sort === 'oldest-latest') foundRecipes.sort('createdAt');
+    if(sort === 'latest-oldest') foundRecipes.sort('-createdAt');
+    if(sort === 'lowest-highest') foundRecipes.sort('averageRating');
+    if(sort === 'highest-lowest') foundRecipes.sort('-averageRating');
     //Pagination according to user's choice
-    const page = req.query || 1
-    const limit = req.query || 15
+    const page = req.query.page || 1
+    const limit = req.query.limit || 15
     const skip = (page-1)*limit
     foundRecipes.skip(skip).limit(limit)
 
     const resultRecipes = await foundRecipes;
     const numOfRecipes = resultRecipes.length
-    const numOfPages = Math.ceil(numberOfRecipes/limit) || 1
+    const numOfPages = Math.ceil(numOfRecipes/limit) || 1
+
+    res.status(StatusCodes.OK).json({resultRecipes,numOfRecipes,numOfPages})
+}
+
+//Tested and fixed
+const searchByIngredientList = async (req,res) => {
+    const {ingredientList} = req.body
+    let allRecipesIds = [];
+    //'forEach()' does not support 'async-await'
+    //'for' loop, however, does
+    for(const ingredient of ingredientList){
+        //find by ingredient, no limit set
+        if(!ingredient.amount || !ingredient.unit){
+            //find all ingredients (not including substitutes)
+            const ingredients = await Ingredient.find({ingredient:ingredient.ingredient})
+            ingredients.map(index => allRecipesIds.push(index.recipe.toString()))
+        }
+        //find by ingredient, limit set
+        else{
+            let totalAmount;
+            if(ingredient.unit === 'kg' || ingredient.unit === 'l') totalAmount = ingredient.amount*1000;
+            else totalAmount = ingredient.amount ;
+            const ingredients = await Ingredient.find({ingredient:ingredient.ingredient,totalAmount:{$lte:totalAmount}})
+            ingredients.map(index => {allRecipesIds.push(index.recipe.toString())})
+        }
+    }
+    const foundRecipes = Recipe.find({_id:{$in:allRecipesIds}});
+    const sort = req.body.sort;
+    if(sort === 'a-z') foundRecipes.sort({title:1});
+    if(sort === 'z-a') foundRecipes.sort({title:-1});
+    if(sort === 'oldest-latest') foundRecipes.sort({createdAt:1});
+    if(sort === 'latest-oldest') foundRecipes.sort({createdAt:-1});
+    if(sort === 'lowest-highest') foundRecipes.sort({averageRating:1});
+    if(sort === 'highest-lowest') foundRecipes.sort({averageRating:-1});
+
+    const page = req.body.page || 1
+    const limit = req.body.limit || 15
+    const skip = (page-1)*limit
+    foundRecipes.skip(skip).limit(limit)
+
+    const resultRecipes = await foundRecipes;
+    const numOfRecipes = resultRecipes.length
+    const numOfPages = Math.ceil(numOfRecipes/limit) || 1
 
     res.status(StatusCodes.OK).json({resultRecipes,numOfRecipes,numOfPages})
 }
@@ -227,9 +249,9 @@ const uploadImage = async (req,res) => {
     res.status(StatusCodes.OK).send('Image uploaded successfully!')
 }
 
-//CRUD substitute ingredients 
+
 const getSubstituteIngredients = async (req,res) => {
-    const {recipeId,ingredientId} = req.query
+    const {recipeId,ingredientId} = req.params
     const recipe = await Recipe.findById(recipeId)
     if(!recipe){
         throw new CustomError.NotFoundError('Recipe cannot be found')
@@ -238,106 +260,73 @@ const getSubstituteIngredients = async (req,res) => {
     if(!ingredient){
         throw new CustomError.NotFoundError('Ingredient cannot be found')
     }
-    const substituteIngredients = await Ingredient.find({subsituteFor:ingredientId,recipe:recipeId}).select('ingredient amount')
+    const substituteIngredients = await Ingredient.find({substituteFor:ingredientId,recipe:recipeId}).select('ingredient amount unit')
     if(!substituteIngredients){
         throw new CustomError.NotFoundError('There is no substitute for this ingredient')
     }
-    const numOfSubIngredients = await Ingredient.countDocuments({subsituteFor:ingredientId,recipe:recipeId})
+    const numOfSubIngredients = await Ingredient.countDocuments({substituteFor:ingredientId,recipe:recipeId})
     res.status(StatusCodes.OK).json({
         substituteIngredients,
         numOfSubIngredients
     })
 }
 
-const addSubstituteIngredients = async (req,res) => {
+const updateSubstituteIngredientList = async (req,res) => {
     const{
-        query:{recipeId,ingredientId},
-        body:{ingredient,amount,unit}
-    } = req
-    //check for presence of information
-    if(!ingredient || !amount || !unit){
-        throw new CustomError.NotFoundError('Substitute ingredient or its amount and/or unit is missing')
-    }
-    //check if both targets exist
-    const recipe = await Recipe.findById(recipeId)
-    if(!recipe){
-        throw new CustomError.NotFoundError('Recipe cannot be found')
-    }
-    const updatedIngredient = await Ingredient.findById(ingredientId)
-    if(!updatedIngredient){
-        throw new CustomError.NotFoundError('Ingredient cannot be found')
-    }
-    //check if substitute ingredient has been created before
-    const isIngredientTaken = await Ingredient.find({substituteFor:ingredientId,ingredient:ingredient})
-    if(isIngredientTaken){
-        throw new CustomError.DuplicatedEntityError('Substitute ingredient has already been created')
-    }
-    //create substitute ingredient
-    const subIngredient = await Ingredient.create({
-        ingredient,
-        amount,
-        unit,
-        recipe:recipeId,
-        substituteFor:ingredientId
-    })
-    res.status(StatusCodes.CREATED).json({
-        subIngredient:{
-            ingredient:subIngredient.ingredient,
-            amount: subIngredient.amount,
-            unit: subIngredient.unit
-        },
-        msg:'Substitute ingredient added successfully!'
-    })
-}
-
-const updateSubstituteIngredients = async (req,res) => {
-    const {
-        query: {recipeId,ingredientId,subIngredientId},
-        body: {ingredient,amount,unit}
-    } = req
-    if(!ingredient || !amount || !unit){
-        throw new CustomError.BadRequestError('Substitute or its amount and/or unit is missing')
-    }
-    const recipe = await Recipe.findById(recipeId)
-    const updatedIngredient = await Ingredient.findById(ingredientId)
-    const subIngredient = await Ingredient.findById(subIngredientId)
+        params:{recipeId,ingredientId},
+        body:{ingredientList}
+    } = req;
+    const recipe = await Recipe.findById(recipeId);
+    const updatedIngredient = await Ingredient.findById(ingredientId);
     if(!recipe) throw new CustomError.NotFoundError('Recipe cannot be found');
     if(!updatedIngredient) throw new CustomError.NotFoundError('Ingredient cannot be found');
-    if(!subIngredient) throw new CustomError.NotFoundError('Substitute ingredient cannot be found');
-    //update new information
-    const isIngredientTaken = await Ingredient.find({substituteFor:ingredientId,ingredient:ingredient})
-    if(isIngredientTaken) throw new CustomError.DuplicatedEntityError('Substitute ingredient has already been created');
-    //update new information
-    subIngredient.ingredient = ingredient;
-    subIngredient.amount = amount;
-    subIngredient.unit = unit;
-    await subIngredient.save();
-    res.status(StatusCodes.OK).json({
-        subIngredient:{
-            subIngredient: ingredient,
-            subIngredient: amount,
-            subIngredient: unit,
-        },
-        msg:'Substitute ingredient has been updated!'
-    })
-}
-
-const deleteSubstituteIngredients = async (req,res) => {
-    const {recipeId,ingredientId,subIngredientId} = req.query
-    const recipe = await Recipe.findById(recipeId)
-    const ingredient = await Ingredient.findById(ingredientId)
-    if(!recipe) throw new CustomError.NotFoundError('Recipe cannot be found');
-    if(!ingredient) throw new CustomError.NotFoundError('Ingredient cannot be found');
-    UtilityFunction.checkOwnerPermission(req.user,recipe.user)
-    const subIngredient = await Ingredient.findOneAndDelete({_id:subIngredientId})
-    if(!subIngredient){
-        throw new CustomError.NotFoundError('Cannot find substitute ingredient to delete')
+    for(var i = 0; i < ingredientList.length;i++){
+        const ingredient = ingredientList[i];
+        if(!ingredient.ingredient || !ingredient.amount || !ingredient.unit){
+            throw new CustomError.BadRequestError('Ingredient, amount or unit of some ingredient is missing')
+        }
+        if(ingredient.ingredient === updatedIngredient.ingredient){
+            throw new CustomError.DuplicatedEntityError('Substitute ingredient must be different from original ingredient')
+        }
+        for(var j = 0;j < ingredientList.length;j++){
+            if(i === j) continue;
+            if(ingredient.ingredient === ingredientList[j].ingredient){
+                throw new CustomError.DuplicatedEntityError('Some ingredient has been registered more than once')
+            }
+        }
     }
-    res.status(StatusCodes.OK).json({msg:'Substitute ingredient deleted successfully!'})
+    for(const eachIngredient of ingredientList){
+        const {ingredient,amount,unit,status} = eachIngredient;
+        if(status === 'created'){
+            await Ingredient.create({
+                ingredient,amount,unit,
+                status:'updated',
+                recipe:recipeId,
+                substituteFor:ingredientId,
+            })
+        } else if(status === 'updated'){
+            const {_id:subIngredientId} = eachIngredient;
+            const updatedSubIngredient = await Ingredient.findById(subIngredientId);
+            updatedSubIngredient.ingredient = ingredient
+            updatedSubIngredient.amount = amount
+            updatedSubIngredient.unit = unit
+            updatedSubIngredient.status = 'updated';
+            await updatedSubIngredient.save();
+        }else{
+            const {_id:subIngredientId} = eachIngredient
+            await Ingredient.findByIdAndDelete(subIngredientId)
+        }
+    }
+    const subIngredients = await Ingredient.find({substituteFor:ingredientId}).select('ingredient amount unit');
+    const numOfSubIngredients = await Ingredient.countDocuments({substituteFor:ingredientId});
+    res.status(StatusCodes.OK).json({
+        subIngredients,
+        numOfSubIngredients
+    })
 }
 
 module.exports = {
-    getAllRecipes,
+    getAllRecipes, searchByIngredientList,
     getSingleRecipe,
     createRecipe,
     updateRecipe,
@@ -345,7 +334,5 @@ module.exports = {
     deleteRecipe,
     uploadImage,
     getSubstituteIngredients,
-    addSubstituteIngredients,
-    updateSubstituteIngredients,
-    deleteSubstituteIngredients
+    updateSubstituteIngredientList
 }

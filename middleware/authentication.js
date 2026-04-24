@@ -21,7 +21,7 @@ const authenticateUser = async (req,res,next) => {
             user:payload.user.userId,
             refreshToken:payload.refreshToken,
         })
-        //Check if token is still valid
+        //Check if user is banned / suspended
         if(!existingToken || !existingToken?.isValid){
             throw new CustomError.UnauthenticatedError('Authentication failed!')
         }
@@ -29,7 +29,7 @@ const authenticateUser = async (req,res,next) => {
         UtilityFunction.attachCookiesToResponse({
             res,
             user:payload.user,
-            refreshToken
+            refreshToken:payload.refreshToken
         });
         req.user = payload.user; //'isTokenValid' returns an object of form 'user:{userId,name,role}'
         next()

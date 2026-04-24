@@ -77,30 +77,28 @@ const login = async (req,res) => {
 
     const tokenUser = await UtilityFunction.createTokenUser(user)
     const existingToken = await Token.findOne({user:user._id})
+    //If token can be found
     if(existingToken){
         const {isValid,refreshToken} = existingToken ;
+        //Admin can use this to ban / suspend an user
         if(!isValid){
             throw new CustomError.UnauthenticatedError('Invalid credentials')
         }
         UtilityFunction.attachCookiesToResponse({res,user:tokenUser,refreshToken})
         res.status(StatusCodes.OK).json({
             tokenUser,
-            status:'Refresh token found',
+            status:'Refresh token found!',
         })
-        return
+        return;
     }
     const refreshToken = crypto.randomBytes(40).toString('hex')
     const userAgent = req.headers['user-agent']
     const ip = req.ip
-    await Token.create({refreshToken,ip,userAgent,user:user._id})
-    UtilityFunction.attachCookiesToResponse({
-        res,
-        user:tokenUser,
-        refreshToken
-    })
+    await Token.create({refreshToken,ip,userAgent,user:user._id});
+    UtilityFunction.attachCookiesToResponse({res,user:tokenUser,refreshToken});
     res.status(StatusCodes.OK).json({
         tokenUser,
-        status:'New refresh token created'
+        status:'New refresh token created!'
     })
 }
 

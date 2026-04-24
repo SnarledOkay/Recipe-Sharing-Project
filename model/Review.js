@@ -1,12 +1,9 @@
 const mongoose = require('mongoose')
 
-const Recipe = require('./Recipe')
-
 const ReviewSchema = new mongoose.Schema({
     title:{
         type:String,
         required:[true,'Title is required'],
-        minLength: 20,
         maxLength: 200
     },
     rating:{
@@ -31,29 +28,30 @@ const ReviewSchema = new mongoose.Schema({
     }
 },{timestamps:true})
 
-ReviewSchema.statics.calculateAverageRating = async function(next){
+ReviewSchema.statics.calculateAverageRating = async function(recipeId){
+    const Recipe = require('./Recipe')
     //The sequence of data aggregations operations are called a "pipeline"
-    const rating = await this.db.collection.aggregate([
-        {$match:{recipe:this.recipe}},
+    const rating = await this.aggregate([
+        {$match:{recipe:recipeId}},
         {$group:{
             _id:'$recipe',
             averageRating:{$avg:'$rating'},
             numOfReviews:{$sum:1}
         }}
     ])
-    console.log(rating)
+    console.log(rating[0]);
     try{
         //the result we're looking for (already grouped) is pushed to the start
         //Others that matches by '$match' follows after
         //That's why we use 'rating[0]'
-        await Recipe.findOneAndUpdate({_id:this.recipe},{
+        const updatedRecipe = await Recipe.findByIdAndUpdate(recipeId,{
             averageRating:rating[0]?.averageRating || 0.0,
             numberOfReviews:rating[0]?.numOfReviews || 0,
-        })
+        },{new:true});
+        console.log('Rating after update: ',updatedRecipe.averageRating);
     }catch(error){
         console.log(error)
     }
-    next()
 }
 
 //updates average rating if review is modified

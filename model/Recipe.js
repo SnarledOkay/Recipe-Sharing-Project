@@ -2,7 +2,6 @@ const mongoose = require('mongoose')
 const CustomError = require('../errors')
 
 const Review = require('./Review')
-const TempIngredient = require('./TempIngredient')
 
 //No longer need an ingredient list
 const RecipeSchema = new mongoose.Schema({

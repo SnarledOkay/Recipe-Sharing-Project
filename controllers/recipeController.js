@@ -245,11 +245,6 @@ const deleteRecipe = async (req,res) => {
     res.status(StatusCodes.OK).json({msg:'Recipe deleted successfully!'})
 }
 
-const uploadImage = async (req,res) => {
-    res.status(StatusCodes.OK).send('Image uploaded successfully!')
-}
-
-
 const getSubstituteIngredients = async (req,res) => {
     const {recipeId,ingredientId} = req.params
     const recipe = await Recipe.findById(recipeId)
@@ -271,6 +266,7 @@ const getSubstituteIngredients = async (req,res) => {
     })
 }
 
+//Merge 'add', 'update', 'delete' ingredient
 const updateSubstituteIngredientList = async (req,res) => {
     const{
         params:{recipeId,ingredientId},
@@ -332,7 +328,6 @@ module.exports = {
     updateRecipe,
     updateIngredientList,
     deleteRecipe,
-    uploadImage,
     getSubstituteIngredients,
     updateSubstituteIngredientList
 }

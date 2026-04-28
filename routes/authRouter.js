@@ -10,16 +10,18 @@ const {
     logout,
     forgotPassword,
     resetPassword,
+    changePassword,
     refreshToken
 } = require('../controllers/authController')
 
-router.route('/register-user').post(registerUser)
-// router.route('/verify-email').post(verifyEmail)
-router.route('/login').post(login)
-router.route('/logout').delete(authenticateUser,logout)
-router.route('/forgot-password').post(forgotPassword)
-router.route('/reset-password').post(resetPassword)
-router.route('/refresh-token').post(authenticateUser,refreshToken)
+router.route('/register-user').post(registerUser);
+// router.route('/verify-email').post(verifyEmail);
+router.route('/login').post(login);
+router.route('/logout').delete(authenticateUser,logout);
+router.route('/forgot-password').post(forgotPassword);
+router.route('/reset-password').post(resetPassword);
+router.route('/change-password').patch(authenticateUser,changePassword);
+router.route('/refresh-token').post(authenticateUser,refreshToken);
 
 module.exports = router
 

@@ -108,6 +108,37 @@ const getSingleRecipe = async (req,res) => {
     })
 }
 
+const getMyRecipes = async (req,res) => {
+    console.log(req.user);
+    const {userId} = req.user;
+    const recipes = Recipe.find({user:userId}).select('title description instruction averageRating numberOfReviews createdAt')
+    if(!recipes){
+        throw new CustomError.NotFoundError('You have not created any recipe!')
+    }
+    const sort = req.query.sort
+    const direction = req.query.direction
+    if(direction === 'forward'){
+        if(sort === 'timestamps') recipes.sort('createdAt');
+        if(sort === 'rating') recipes.sort('averageRating');
+        if(sort === 'views') recipes.sort('numberOfReviews')
+    }else if(direction === 'backward'){
+        if(sort === 'timestamps') recipes.sort('-createdAt');
+        if(sort === 'rating') recipes.sort('-averageRating');
+        if(sort === 'views') recipes.sort('-numberOfReviews')
+    }
+
+    const page = req.query.page || 1;
+    const limit = req.query.limit || 15;
+    const skip = (page-1)*limit;
+    recipes.skip(skip).limit(limit);
+
+    const resultRecipes = await recipes;
+    const numOfRecipes = await Recipe.countDocuments({user:userId});
+    const numOfPages = Math.ceil(numOfRecipes / limit);
+    
+    res.status(StatusCodes.OK).json(resultRecipes,numOfRecipes,numOfPages);
+}
+
 //Tested and fixed
 const createRecipe = async (req,res) => {
     //check presence of all information
@@ -323,7 +354,7 @@ const updateSubstituteIngredientList = async (req,res) => {
 
 module.exports = {
     getAllRecipes, searchByIngredientList,
-    getSingleRecipe,
+    getSingleRecipe, getMyRecipes,
     createRecipe,
     updateRecipe,
     updateIngredientList,

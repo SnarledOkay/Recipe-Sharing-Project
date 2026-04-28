@@ -13,7 +13,11 @@ const getAllRecipeReviews = async (req,res) => {
     if(!recipe){
         throw new CustomError.NotFoundError('Recipe cannot be found')
     }
-    let reviews = Review.find({recipe:recipeId}).select('title rating user createdAt');
+    let reviews ;
+    const rating = req.query.rating;
+    if(rating) reviews.find({recipe:recipeId,rating:rating}).select('title rating user createdAt');
+    else reviews = Review.find({recipe:recipeId}).select('title rating user createdAt');
+    
     const sort = req.query.sort;
     if(sort === 'oldest-latest') reviews.sort('createdAt');
     if(sort === 'latest-oldest') reviews.sort('-createdAt');
@@ -54,6 +58,16 @@ const getCurrentUserReview = async (req,res) => {
         throw new CustomError.NotFoundError('You have not reviewed this recipe yet!')
     }
     res.status(StatusCodes.OK).json({review});
+}
+
+const getMyReviews = async (req,res) => {
+    const {userId} = req.user 
+    const reviews = await Review.find({user:userId}).select('title rating description recipe')
+    if(!reviews){
+        throw new CustomError.NotFoundError('You have not reviewed any recipe yet!')
+    }
+    const numOfReviews = await Review.countDocuments({user:userId});
+    res.status(StatusCodes.OK).json({reviews,numOfReviews})
 }
 
 //Tested and fixed
@@ -147,6 +161,7 @@ const deleteReview = async (req,res) => {
 module.exports = {
     getAllRecipeReviews,
     getSingleReview,getCurrentUserReview,
+    getMyReviews,
     createReview,
     updateReview,
     deleteReview

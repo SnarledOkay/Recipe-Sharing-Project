@@ -23,6 +23,7 @@ const connectDB = require('./db/connect')
 const authRouter = require('./routes/authRouter')
 const recipeRouter = require('./routes/recipeRouter')
 const reviewRouter = require('./routes/reviewRouter')
+const bookmarkRouter = require('./routes/bookmarkRouter')
 
 //4 - import middlewares
 const errorHandlerMiddleware = require('./middleware/error-handler')
@@ -35,9 +36,10 @@ app.use(fileUpload({useTempFiles:true}));
 app.use(morgan('tiny'))
 
 //6 - Set up routes
-app.use('/api/v1/auth',authRouter)
-app.use('/api/v1/recipe', recipeRouter)
-app.use('/api/v1/review', reviewRouter)
+app.use('/api/v1/auth',authRouter);
+app.use('/api/v1/recipe', recipeRouter);
+app.use('/api/v1/review', reviewRouter);
+app.use('/api/v1/bookmark',bookmarkRouter);
 
 //7 - error handler middleware (must be last)
 //if any route matches, user has already been directed

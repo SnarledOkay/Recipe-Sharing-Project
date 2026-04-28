@@ -4,7 +4,7 @@ const router = express.Router()
 
 const {
     getAllRecipes,searchByIngredientList,
-    getSingleRecipe,
+    getSingleRecipe, getMyRecipes,
     createRecipe,
     updateRecipe, updateIngredientList,
     deleteRecipe,
@@ -20,6 +20,7 @@ router.route('/advanced-search').post(searchByIngredientList);
 router.route('/')
     .get(getAllRecipes)
     .post(authenticateUser,createRecipe)
+router.route('/my-recipe').get(authenticateUser,getMyRecipes);
 router.route('/:recipeId/upload-image').post(authenticateUser,uploadRecipeImage)
 router.route('/:recipeId/ingredient-list').patch(authenticateUser,updateIngredientList)
 router.route('/:id')

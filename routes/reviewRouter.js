@@ -5,6 +5,7 @@ const router = express.Router()
 const {
     getAllRecipeReviews,
     getSingleReview, getCurrentUserReview,
+    getMyReviews,
     createReview,
     updateReview,
     deleteReview
@@ -14,6 +15,7 @@ const {authenticateUser} = require('../middleware/authentication')
 router.route('/:recipeId/my-review')
     .get(authenticateUser,getCurrentUserReview)
     .patch(authenticateUser,updateReview)
+router.route('/my-review').get(authenticateUser,getMyReviews);
 router.route('/:recipeId/reviews/:reviewId')
     .get(getSingleReview)
     .delete(authenticateUser,deleteReview)

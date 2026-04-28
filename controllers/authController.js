@@ -158,6 +158,32 @@ const resetPassword = async (req,res) => {
     res.status(StatusCodes.OK).json({msg:'Password changed successfully!'})
 }
 
+const changePassword = async (req,res) => {
+    const {
+        body:{currentPassword,newPassword,confirmPassword},
+        user:{userId}
+    } = req
+    if(!currentPassword || !newPassword || !confirmPassword){
+        throw new CustomError.BadRequestError('Please provide all necessary fields!')
+    }
+    if(newPassword !== confirmPassword){
+        throw new CustomError.BadRequestError('Confirm password does not match!')
+    }
+    const user = await User.findById(userId)
+    if(!user.isVerified){
+        throw new CustomError.BadRequestError('Account is not yet verified!')
+    }
+    const isPasswordCorrect = await UtilityFunction.comparePassword(currentPassword,user.password);
+    if(!isPasswordCorrect){
+        throw new CustomError.UnauthenticatedError('Provided password does not match current password!')
+    }
+    user.password = newPassword ;
+    await user.save();
+    res.status(StatusCodes.OK).json({
+        msg:'Password changed successfully!'
+    })
+}
+
 const refreshToken = async (req,res) => {
     res.status(StatusCodes.OK).json({msg:'Access Token refreshed!'})
 }
@@ -169,5 +195,6 @@ module.exports = {
     logout,
     forgotPassword,
     resetPassword,
+    changePassword,
     refreshToken
 }
